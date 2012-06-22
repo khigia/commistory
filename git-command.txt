@@ -1,0 +1,3 @@
+git log --numstat -M -C --ignore-submodules --pretty=format:"%at %aN" HEAD
+  --date-order
+git ls-tree -l -r HEAD

@@ -1,0 +1,7 @@
+{ "cfgRepositories": [ { "repoName": "commistory"
+                       , "repoPath": "./"
+                       , "repoFileFilterOutPrefix": []
+                       }
+                     ]
+, "cfgProjectName": "Commistory"
+}
