@@ -1,10 +1,10 @@
-var width = 1200,
+var width = 800,
     height = width,
     radius = Math.min(width, height) / 2,
     delta = radius / 6,
     color = d3.scale.category20c();
 
-var vis = d3.select("#chart").append("svg")
+var vis = d3.select("#chartsunburst").append("svg")
     .attr("width", width)
     .attr("height", height)
   .append("g")
