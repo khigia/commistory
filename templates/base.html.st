@@ -44,10 +44,7 @@
           <a class="brand" href="#">Commistory</a>
           <div class="nav-collapse">
             <ul class="nav">
-              <li class="active"><a href="#">General</a></li>
-              <li><a href="activity.html">Activity</a></li>
-              <li><a href="authors.html">Authors</a></li>
-              <li><a href="code.html">Code</a></li>
+              $navitems$
             </ul>
           </div><!--/.nav-collapse -->
         </div>
@@ -55,10 +52,7 @@
     </div>
 
     <div class="container">
-
-      <h1>File sizes sunburst</h1>
-      <div id="chart"></div>
-      <script src="assets/sunburst.js" type="text/javascript"></script>
+      $content$
     </div> <!-- /container -->
 
     <!-- Le javascript
