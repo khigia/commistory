@@ -12,7 +12,7 @@ import Commistory.ReportGen
 import Commistory.Config
 
 
-ls fsroot repo filterpred = do
+gitLsTree fsroot repo filterpred = do
   -- TODO use -z
   (_, Just hstdout, _, _hpp) <- createProcess (shell "git ls-tree -r -l HEAD") {
       cwd = Just repo,
@@ -28,12 +28,28 @@ ls fsroot repo filterpred = do
   -- TODO ??? waitForProcess hpp
   return fstree
 
-repoFsTree repoCfg = do ls rootNode path pred
+repoFsTree repoCfg = do gitLsTree rootNode path pred
   where
     rootNode = dirNode $ unpack $ repoName repoCfg
     path = unpack (repoPath repoCfg)
     -- TODO build a prefix tree is faster?
     pred n = not (any (\p -> p `isPrefixOf` (fst n)) (repoFileFilterOutPrefix repoCfg))
+
+
+gitLog repo = do
+  (_, Just hstdout, _, _hpp) <- createProcess (shell "git log -z --numstat -M -C --ignore-submodules --pretty=format:\"%at %aN\" --date-order HEAD") {
+      cwd = Just repo,
+      std_out = CreatePipe}
+  c <- hGetContents hstdout
+  case parseGitLog c of
+    Left e -> print e >>
+              return []
+    Right parsed -> return parsed
+  -- TODO ??? waitForProcess hpp
+
+repoCommits repoCfg = do gitLog path
+  where
+    path = unpack (repoPath repoCfg)
 
 main :: IO ()
 main = do
@@ -43,6 +59,8 @@ main = do
   -- parse git data
   fstrees <- mapM repoFsTree $ cfgRepositories cfg
   let fsroot = dirNodeWithChildren (unpack $ cfgProjectName cfg) fstrees
+  commits <- mapM repoCommits $ cfgRepositories cfg
+  print commits
 
   -- generate report
   report fsroot
