@@ -9,15 +9,18 @@ data Fs = FsNode { fsnName:: String
                  , fsnChildren :: Map.Map String Fs
                  }
 
-fileNode name sz = FsNode{ fsnName = name
-                         , fsnSize = sz
-                         , fsnChildren = Map.empty
-                         }
+fileCount node | Map.null (fsnChildren node) = 1
+               | otherwise                   = foldr (\x y -> y + fileCount x) 0 (Map.elems $ fsnChildren node)
 
-dirNode name = FsNode{ fsnName = name
-                     , fsnSize = 0
-                     , fsnChildren = Map.empty
-                     }
+fileNode name sz = FsNode { fsnName = name
+                          , fsnSize = sz
+                          , fsnChildren = Map.empty
+                          }
+
+dirNode name = FsNode { fsnName = name
+                      , fsnSize = 0
+                      , fsnChildren = Map.empty
+                      }
 
 dirNodeWithChildren name childrenFs =
   FsNode { fsnName = name

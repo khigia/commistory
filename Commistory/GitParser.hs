@@ -1,5 +1,8 @@
 module Commistory.GitParser where
 
+import Data.Time.Format (readTime)
+import Data.Time (UTCTime)
+import Locale (defaultTimeLocale)
 import Text.ParserCombinators.Parsec
 
 parseGitLsTree :: String -> Either ParseError [(FilePath,Integer)]
@@ -22,22 +25,36 @@ parseGitLsTree input =
                 path <- many (noneOf "\n")
                 return (path, read size)
 
-data GitLogCommit = GitLogCommit { timestamp :: String -- TODO
-                                 , author :: String
-                                 , changes :: [GitLogChange]
+-- TODO move these to some data module
+
+data GitLogCommit = GitLogCommit { ciTimestamp :: UTCTime
+                                 , ciAuthor :: String
+                                 , ciChanges :: [GitLogChange]
                                  }
                   deriving (Show)
+
 data GitLogChange = Binary String
                   | Text { add :: Integer
                          , del :: Integer
                          , name :: GitLogFilename
                          }
                   deriving (Show)
+
 data GitLogFilename = Simple String
                     | Rename String String
                     deriving (Show)
 
-parseGitLog :: String -> Either ParseError [(String,String,[String])]
+padd p1 p2 = (fst p1 + fst p2, snd p1 + snd p2)
+
+countCommitLines ci = foldr padd (0,0) changeLines
+  where
+    changeLines = map countChangeLines $ ciChanges ci
+    countChangeLines ch = case ch of
+      Binary _ -> (0, 0)
+      Text a d _ -> (a, d)
+
+
+parseGitLog :: String -> Either ParseError [GitLogCommit]
 parseGitLog input =
   parse p_commits "(unknown)" input
   where
@@ -47,8 +64,9 @@ parseGitLog input =
                   author <- p_author
                   char '\n'
                   files <- p_files
-                  return (timestamp, author, files)
-    p_timestamp = many1 digit
+                  return $ GitLogCommit timestamp author files
+    p_timestamp = do stamp <- many1 digit
+                     return $ readTime defaultTimeLocale "%s" stamp
     p_author = many1 (noneOf "\n")
     p_files = many (p_binary <|> p_text)
     p_binary = do p_dash
@@ -57,22 +75,23 @@ parseGitLog input =
                   p_tab
                   f1 <- p_filename
                   p_nul
-                  return $ "binary" ++ f1
-    p_text = do p_count
+                  return $ Binary f1
+    p_text = do added <- p_count
                 p_tab
-                p_count
+                deleted <- p_count
                 p_tab
-                p_file
+                name <- p_file
+                return $ Text added deleted name
     p_file = p_rename <|> p_change
     p_rename = do p_nul
                   f1 <- p_filename
                   p_nul
-                  p_filename
+                  f2 <- p_filename
                   p_nul
-                  return $ "rename" ++ f1
+                  return $ Rename f1 f2
     p_change = do f1 <- p_filename
                   p_nul
-                  return $ "file" ++ f1
+                  return $ Simple f1
     p_nul = char '\0'
     p_tab = char '\t'
     p_dash = char '-'

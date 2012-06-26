@@ -37,7 +37,7 @@ repoFsTree repoCfg = do gitLsTree rootNode path pred
 
 
 gitLog repo = do
-  (_, Just hstdout, _, _hpp) <- createProcess (shell "git log -z --numstat -M -C --ignore-submodules --pretty=format:\"%at %aN\" --date-order HEAD") {
+  (_, Just hstdout, _, _hpp) <- createProcess (shell "git log -z --numstat -M -C --ignore-submodules --pretty=format:\"%at %aN\" --date-order --reverse HEAD") {
       cwd = Just repo,
       std_out = CreatePipe}
   c <- hGetContents hstdout
@@ -47,9 +47,19 @@ gitLog repo = do
     Right parsed -> return parsed
   -- TODO ??? waitForProcess hpp
 
-repoCommits repoCfg = do gitLog path
+repoCommits repoCfg = do allcommits <- gitLog path
+                         return $ filterCommits allcommits
   where
     path = unpack (repoPath repoCfg)
+    filterCommits cis = map filterCommit cis
+    filterCommit ci = ci { ciChanges = filterChanges (ciChanges ci) }
+    filterChanges chs = filter accept chs
+    accept ch = case ch of
+      Binary fn -> pred fn
+      Text {} -> case name ch of
+        Simple fn -> pred fn
+        Rename _ fn -> pred fn
+    pred fn = not (any (\p -> p `isPrefixOf` fn) (repoFileFilterOutPrefix repoCfg))
 
 main :: IO ()
 main = do
@@ -58,10 +68,10 @@ main = do
 
   -- parse git data
   fstrees <- mapM repoFsTree $ cfgRepositories cfg
-  let fsroot = dirNodeWithChildren (unpack $ cfgProjectName cfg) fstrees
+  -- print fstrees
   commits <- mapM repoCommits $ cfgRepositories cfg
-  print commits
+  -- print commits
 
   -- generate report
-  report fsroot
+  report cfg fstrees commits
 

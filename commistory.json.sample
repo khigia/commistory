@@ -1,6 +1,8 @@
 { "cfgRepositories": [ { "repoName": "commistory"
                        , "repoPath": "./"
-                       , "repoFileFilterOutPrefix": []
+                       , "repoFileFilterOutPrefix": [ "assets"
+                                                    , "genweb/site_media"
+                                                    ]
                        }
                      ]
 , "cfgProjectName": "Commistory"
