@@ -29,6 +29,17 @@
     <link rel="apple-touch-icon-precomposed" href="assets/ico/apple-touch-icon-57-precomposed.png">
 
     <script type="text/javascript" src="assets/d3.v2.js"></script>
+<!--
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.3.0"></script>
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.csv.js?2.3.0"></script>
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.layout.js?2.3.0"></script>
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.time.js?2.3.0"></script>
+-->
+    <style type="text/css">
+svg {
+  font-family: "Helvetica Neue", Helvetica;
+}
+    </style>
   </head>
 
   <body>

@@ -68,9 +68,7 @@ main = do
 
   -- parse git data
   fstrees <- mapM repoFsTree $ cfgRepositories cfg
-  -- print fstrees
   commits <- mapM repoCommits $ cfgRepositories cfg
-  -- print commits
 
   -- generate report
   report cfg fstrees commits
