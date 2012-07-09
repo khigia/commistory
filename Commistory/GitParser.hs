@@ -62,12 +62,12 @@ parseGitLog input =
     p_commit = do timestamp <- p_timestamp
                   char ' '
                   author <- p_author
-                  char '\n'
-                  files <- p_files
-                  return $ GitLogCommit timestamp author files
+                  ( p_nul >> p_commit) <|> do char '\n'
+                                              files <- p_files
+                                              return $ GitLogCommit timestamp author files
     p_timestamp = do stamp <- many1 digit
                      return $ readTime defaultTimeLocale "%s" stamp
-    p_author = many1 (noneOf "\n")
+    p_author = many1 (noneOf "\n\0")
     p_files = many (p_binary <|> p_text)
     p_binary = do p_dash
                   p_tab
