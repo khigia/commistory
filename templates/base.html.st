@@ -39,6 +39,18 @@
 svg {
   font-family: "Helvetica Neue", Helvetica;
 }
+.axis line {
+  stroke: #000;
+  stroke-width: .1px;
+  shape-rendering: crispEdges;
+}
+.axis path {
+  display: none;
+}
+line {
+  stroke: #000;
+  stroke-width: 1.5px;
+}
     </style>
   </head>
 

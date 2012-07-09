@@ -1,8 +1,9 @@
 <ul>
   <li>Commit history per projects and global</li>
+  <li>Line number history per projects and global (line added, deleted, and line count)</li>
 </ul>
 
-<div id="charthist"></div>
+<div id="commithist"></div>
 <script type="text/javascript">
 
 var tmp;
@@ -16,7 +17,7 @@ var x,
 
 var color = d3.scale.category10();
 
-var svg = d3.select("#charthist").append("svg:svg")
+var svg = d3.select("#commithist").append("svg:svg")
     .attr("width", w + m[1] + m[3])
     .attr("height", h + m[0] + m[2])
   .append("svg:g")
@@ -24,119 +25,108 @@ var svg = d3.select("#charthist").append("svg:svg")
 
 d3.json("./data/commits.json", function(data) {
 
-  console.log(data);
-
-  // TODO for now simplify to first repo
-  data = {'commits':data[0].commits};
-  console.log(data);
+  var commits = new Array();
 
   var parse = d3.time.format("%Y-%m-%d %H:%M:%S").parse;
-  data.commits.forEach(function(c) { c.stamp = parse(c.stamp); });
-  data.commits.sort(function(a,b) { return a.stamp - b.stamp; });
-
-  // Create a list of authors and index from author name to index
-  var authors = new Array();
-  var authorIdx = {}; // name -> idx
-  data.commits.forEach(function(d) {
-    if (! authorIdx.hasOwnProperty(d.author)) {
-      authorIdx[d.author] = authors.length;
-      authors.push(d.author);
-    }
+  data.forEach(function(repo, repoIdx) {
+    repo.commits.forEach(function(c) { c.stamp = parse(c.stamp); });
+    commits.push.apply(commits, repo.commits.map(function(c) { return {'repoIdx': repoIdx, 'stamp': c.stamp} })); // concat in place
   });
-  console.log("author", authorIdx);
+  commits.sort(function(a,b) { return a.stamp - b.stamp; });
 
-  // Accumulate commit count per author
+  // Accumulate commit count
+  var stacks = new Array();
   var currentDataPoint = new Array();
-  data.matrix = new Array();
-  for (var i in d3.range(authors.length)) {
-    currentDataPoint[i] = 0;
-    data.matrix.push(new Array());
-  }
-  data.commits.forEach(function(d, i) {
-    currentDataPoint[authorIdx[d.author]] += 1;
-    currentDataPoint.forEach(function(cnt, j) {
-      data.matrix[j].push(cnt);
+  data.forEach(function(repo, repoIdx) {
+    currentDataPoint[repoIdx] = 0;
+    stacks.push(new Array());
+  });
+  commits.forEach(function(d, ci) {
+    d3.range(d.repoIdx, data.length).forEach(function(i) {
+      currentDataPoint[i] += 1;  // incr repo commit count and all following stacks
+    });
+    data.forEach(function(repo, ri) {
+      stacks[ri].push(currentDataPoint[ri]);
     });
   });
-  console.log("data", data);
-
+  tmp = {'data': data, 'commits': commits,' stacks': stacks};
+  console.log(tmp);
 
   x = d3.time.scale()
     .range([0, w - 60])
-    .domain([ data.commits[0].stamp
-            , data.commits[data.commits.length - 1].stamp
+    .domain([ commits[0].stamp
+            , commits[commits.length - 1].stamp
             ]
     )
   ;
 
   y = d3.scale.linear()
     .range([h, 0])
-    .domain([0, data.commits.length])
+    .domain([0, commits.length])
   ;
 
   var make_area = function(idx) {
-    console.log("idx", idx);
     var area = d3.svg.area()
       .interpolate("basis")
       .x(function(d) {
-        return x(data.commits[d].stamp);
+        return x(commits[d].stamp);
       })
       .y0(function(d) {
-        if (idx == 0) {
-          return y(0);
-        } else {
-          return y(d3.range(idx)
-                     .map(function(i) { return data.matrix[i][d]; })
-                     .reduce(function(a,v) { return a + v; })
-          );
-        }
+        return y(idx == 0 ? 0 : stacks[idx-1][d]);
       })
       .y1(function(d) {
-        // TODO accumulated can be done once for all before!
-        return y(d3.range(idx + 1)
-                   .map(function(i) { return data.matrix[i][d]; })
-                   .reduce(function(a,v) { return a + v; })
-        );
+        return y(stacks[idx][d]);
       });
-    return area(d3.range(data.commits.length));
+    return area(d3.range(commits.length));
   }
 
+  var xAxis = d3.svg.axis()
+                    .scale(x)
+                    .ticks(d3.time.months, 3)
+                    .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+                    .scale(y)
+                    //.ticks(8)
+                    //.tickSize(6)
+                    .orient("left");
+
   var g = svg.selectAll("g")
-    .data(authors)
+    .data(data)
     .enter()
       .append("svg:g")
-      .attr("class", "author");
+      .attr("class", "repo");
 
-  g.each(function(d) {
+  svg.append("svg:g")
+      .attr("class", "y axis")
+      .attr("transform", "translate(" + m[1] + ",0)")
+      .call(yAxis);
+
+  svg.append("svg:g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + h + ")")
+      .call(xAxis);
+
+  g.each(function(d,i) {
     var e = d3.select(this);
     e.append("svg:path", ".line")
         .attr("class", "area")
-        .attr("d", make_area(authorIdx[d]))
+        .attr("d", make_area(i))
         .style("fill", function(d) {
-          return color(authorIdx[d]);
+          return color(i);
         })
         .style("fill-opacity", 0.5);
     e.append("svg:text")
      .attr("x", w - 60)
      .attr("y", function(d) {
-        var idx = authorIdx[d];
-        var y0, y1;
-        if (idx == 0) {
-          y0 = 0;
-        } else {
-          y0 = d3.range(idx)
-                   .map(function(i) { return data.matrix[i][data.commits.length - 1]; })
-                   .reduce(function(a,v) { return a + v; })
-          ;
-        }
-        y1 = d3.range(idx + 1)
-               .map(function(i) { return data.matrix[i][data.commits.length - 1]; })
-               .reduce(function(a,v) { return a + v; })
-        ;
+        var lastCi = commits.length - 1;
+        var y0 = i == 0 ? 0 : stacks[i-1][lastCi];
+        var y1 = stacks[i][lastCi];
         return y((y0 + y1) / 2);
      })
-     .text(d);
+     .text(d.repo);
   });
+
 });
 
 </script>
