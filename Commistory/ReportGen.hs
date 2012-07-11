@@ -5,6 +5,7 @@ import Text.StringTemplate
 import Data.List (intercalate, nub)
 import Data.Text (unpack)
 import Data.Time (UTCTime, utctDay)
+import Data.Time.LocalTime (getCurrentTimeZone, utcToLocalTime)
 import Data.Time.Format (formatTime)
 import Locale (defaultTimeLocale)
 
@@ -67,7 +68,7 @@ genGeneralTable config fstrees allcommits = intercalate "\n" renderedRows
     templ = newSTMP "<tr><td>$repo$</td><td>$authors$</td><td>$commits$</td><td>$activedays$</td><td>$files$</td><td>$size$</td><td>$addlines$</td><td>$dellines$</td></tr>" :: StringTemplate String
 
 
-commitsToJson repocommits =
+commitsToJson tz repocommits =
   render $ setAttribute "repocommits" renderedRepos $ tpl
   where
     renderedRepos = intercalate "," $ map renderRepo repocommits
@@ -81,12 +82,13 @@ commitsToJson repocommits =
                     $ setAttribute "timestamp" (renderTime $ ciTimestamp ci)
                     $ setAttribute "author" (show $ ciAuthor ci)
                     tplCommit
-    renderTime t = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" t
+    renderTime t = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" $ utcToLocalTime tz t
     tpl = newSTMP "[$repocommits$]" :: StringTemplate String
     tplRepo = newSTMP "{\"repo\":\"$repo$\",\"commits\":[$commits$]}" :: StringTemplate String
     tplCommit = newSTMP "{\"stamp\":\"$timestamp$\",\"author\":$author$}" :: StringTemplate String
 
 report config fstrees commits = do
+  tz <- getCurrentTimeZone
   -- TODO create initial folder structure
   -- TODO generate static site frame
   templates <- directoryGroup "templates/" :: IO (STGroup B.ByteString)
@@ -114,7 +116,7 @@ report config fstrees commits = do
                                      $ setAttribute "content" activity
                                      $ navbase "Activity"
   writeFile "genweb/data/commits.json"
-    $ commitsToJson
+    $ commitsToJson tz
     $ zip (map repoName $ cfgRepositories config) commits
   -- TODO generate author author: history per author
   let Just authorstmpl = getStringTemplate "authors.html" templates

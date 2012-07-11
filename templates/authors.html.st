@@ -1,9 +1,33 @@
 <ul>
-  <li>Commit history per author</li>
-  <li>Line history per author (iff can remove filter-out path)</li>
   <li>Author summary table (active day, commit number, line added/deleted)</li>
-  <li>TreeMap of all file, each file further split by % of git blame line, each square size proportional to size by the author (or file changing speed to see what s currently changing)</li>
+  <li>Line history per author (iff can remove filter-out path)</li>
+  <li>TreeMap of all file, each file further split by % of git blame line, each square size proportional to size, colored by author</li>
 </ul>
+
+<h2>Summary</h2>
+<table>
+  <thead>
+    <tr><th>Author</th>
+        <th>Commits</th>
+        <th>+lines</th>
+        <th>-lines</th>
+        <th>First/Last(Age)</th>
+        <th>Active days</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><th>TODO</th>
+        <th>TODO</th>
+        <th>TODO</th>
+        <th>TODO</th>
+        <th>TODO</th>
+        <th>TODO</th>
+    </tr>
+  </tbody>
+</table>
+
+
+<h2>Commit history</h2>
 
 <div id="charthist"></div>
 <script type="text/javascript">
@@ -38,7 +62,7 @@ d3.json("./data/commits.json", function(data) {
   console.log(data);
   tmp = data;
 
-  var parse = d3.time.format("%Y-%m-%d %H:%M:%S").parse;
+  var parse = d3.time.format("%Y-%m-%dT%H:%M:%SZ").parse;
   data.commits.forEach(function(c) { c.stamp = parse(c.stamp); });
   data.commits.sort(function(a,b) { return a.stamp - b.stamp; });
 
