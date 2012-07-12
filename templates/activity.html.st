@@ -1,4 +1,5 @@
 <ul>
+  <li>histogram: commit per year-month</li>
   <li>Line number history per projects and global (line added, deleted, and line count)</li>
   <li>TreeMap of all files, each square size proportional to file changing speed to see what s currently changing</li>
 </ul>

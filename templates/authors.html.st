@@ -5,26 +5,30 @@
 </ul>
 
 <h2>Summary</h2>
-<table>
-  <thead>
-    <tr><th>Author</th>
-        <th>Commits</th>
-        <th>+lines</th>
-        <th>-lines</th>
-        <th>First/Last(Age)</th>
-        <th>Active days</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><th>TODO</th>
-        <th>TODO</th>
-        <th>TODO</th>
-        <th>TODO</th>
-        <th>TODO</th>
-        <th>TODO</th>
-    </tr>
-  </tbody>
-</table>
+<div class="row">
+  <div class="span8">
+    <table class="table">
+      <thead>
+        <tr><th>Author</th>
+            <th>Commits</th>
+            <th>+lines</th>
+            <th>-lines</th>
+            <th>First/Last(Age)</th>
+            <th>Active days</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>TODO</td>
+            <td>TODO</td>
+            <td>TODO</td>
+            <td>TODO</td>
+            <td>TODO</td>
+            <td>TODO</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
 
 <h2>Commit history</h2>

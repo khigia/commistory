@@ -4,7 +4,7 @@ import qualified Data.ByteString.Lazy as B
 import Text.StringTemplate
 import Data.List (intercalate, nub)
 import Data.Text (unpack)
-import Data.Time (UTCTime, utctDay)
+import Data.Time (UTCTime, utctDay, getZonedTime)
 import Data.Time.LocalTime (getCurrentTimeZone, utcToLocalTime)
 import Data.Time.Format (formatTime)
 import Locale (defaultTimeLocale)
@@ -88,15 +88,16 @@ commitsToJson tz repocommits =
     tplCommit = newSTMP "{\"stamp\":\"$timestamp$\",\"author\":$author$}" :: StringTemplate String
 
 report config fstrees commits = do
-  tz <- getCurrentTimeZone
-  -- TODO create initial folder structure
   -- TODO generate static site frame
+  now <- getZonedTime
+  tz <- getCurrentTimeZone
   templates <- directoryGroup "templates/" :: IO (STGroup B.ByteString)
   let Just base = getStringTemplate "base.html" templates
+
   let navbase active = setAttribute "navitems" (genNav active) base
-  -- TODO generate general detail as main page
   let Just generaltmpl = getStringTemplate "general.html" templates
       general = render $ setAttribute "tbody" (genGeneralTable config fstrees commits)
+                       $ setAttribute "genstamp" now
                        generaltmpl
   B.writeFile "genweb/index.html" $ render
                                   $ setAttribute "content" general
