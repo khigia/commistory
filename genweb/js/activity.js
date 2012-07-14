@@ -1,5 +1,65 @@
 var tmp;
 
+draw_histogram = function(info) {
+  var monthnum = function(t) {
+    return t.getFullYear() * 12 + t.getMonth();
+  };
+  var hist = d3.layout.histogram()
+    .value(function(ci) { return monthnum(ci.stamp); })
+    .bins(monthnum(info.commits[info.commits.length-1].stamp) - monthnum(info.commits[0].stamp) + 1)
+    .bins(d3.range(monthnum(info.commits[0].stamp),
+                   monthnum(info.commits[info.commits.length-1].stamp) + 1
+                ))
+  ;
+  var stack = d3.layout.stack();
+  var layers = info.data.map(function(repo) {
+    return hist(repo.commits);
+  });
+  stack(layers);
+
+  var m = [20, 20, 30, 20],
+      w = 680 - m[1] - m[3],
+      h = 320 - m[0] - m[2],
+      dx = 2;
+
+  var x = d3.scale.linear()
+    .range([0, w - 60])
+    .domain([monthnum(info.commits[0].stamp), monthnum(info.commits[info.commits.length-1].stamp)])
+  ;
+  var y = d3.scale.linear()
+    .range([0, h])
+    .domain([0, d3.max(layers[layers.length-1].map(function(e) {return e.y + e.y0;}))])
+  ;
+
+  var svg = d3.select("#histogram")
+    .append("svg:svg")
+      .attr("width", w + m[1] + m[3])
+      .attr("height", h + m[0] + m[2])
+    .append("svg:g")
+      .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
+
+  var svglayers = svg.selectAll("g.layer")
+    .data(layers)
+    .enter()
+      .append("g")
+        .attr("class", "layer")
+        .style("fill", function(d, i) { return info.repoColorScale(i); })
+        .style("fill-opacity", "0.42")
+  ;
+
+  var bars = svglayers.selectAll("g.bar")
+    .data(function(d) { return d; })
+    .enter()
+      .append("g")
+        .attr("class", "bar")
+      .append("svg:rect")
+        .attr("x", function(d) { return x(d.x); })
+        .attr("y", function(d) { return h - y(d.y0 + d.y);})
+        .attr("width", function(d) { return x(d.x + d.dx) - x(d.x) - dx; })
+        .attr("height", function(d) { return y(d.y); })
+  ;
+}
+
 draw_dow_count = function(info) {
   //      0          lm                              rm                       w
   // 0    *    day    * 1 2 3 .....................23 * axis                  w
@@ -84,7 +144,6 @@ draw_dow_count = function(info) {
       }
     });
   });
-  console.log(maxCommit);
   heatmap.selectAll("g.day").each(function(day) {
     d3.select(this).selectAll("g.hour")
       .data(function(d) { return d3.range(24); })
@@ -177,8 +236,6 @@ draw_commit_history = function(info) {
       w = 680 - m[1] - m[3],
       h = 320 - m[0] - m[2];
 
-  var color = d3.scale.category10();
-
   var svg = d3.select("#commithist").append("svg:svg")
       .attr("width", w + m[1] + m[3])
       .attr("height", h + m[0] + m[2])
@@ -246,7 +303,7 @@ draw_commit_history = function(info) {
         .attr("class", "area")
         .attr("d", make_area(i))
         .style("fill", function(d) {
-          return color(i);
+          return info.repoColorScale(i);
         })
         .style("fill-opacity", 0.5);
     e.append("svg:text")
@@ -266,7 +323,6 @@ d3.json("./data/commits.json", function(data) {
 
   var parse = d3.time.format("%Y-%m-%dT%H:%M:%SZ").parse;
   var info = {};
-  tmp = info;
 
   // dow[7][24]: count per day and per hour
   var dowcount = {};
@@ -295,6 +351,7 @@ d3.json("./data/commits.json", function(data) {
       c.stamp = parse(c.stamp);
       dowcount.add_stamp(c.stamp);
     });
+    repo.commits.sort(function(a,b) { return a.stamp - b.stamp; });
     commits.push.apply(commits, repo.commits.map(function(c) { return {'repoIdx': repoIdx, 'stamp': c.stamp} })); // concat in place
   });
   commits.sort(function(a,b) { return a.stamp - b.stamp; });
@@ -318,8 +375,19 @@ d3.json("./data/commits.json", function(data) {
   info.commits = commits
   info.stacks = stacks
   info.dowcount = dowcount;
-  console.log(tmp);
+  if (data.length <= 10) {
+    info.repoColorScale = d3.scale.category10();
+  } else if (data.length <= 20) {
+    info.repoColorScale = d3.scale.category20();
+  } else {
+    var inter = d3.interpolateRgb("rgb(213,213,213)", "rgb(42,42,42)");
+    info.repoColorScale = d3.scale.ordinal()
+                            .domain(d3.range(0, data.length))
+                            .range(d3.range(0, data.length).map(function(i) { return inter(i); }))
+    ;
+  }
 
+  draw_histogram(info);
   draw_commit_history(info);
   draw_dow_count(info);
 
