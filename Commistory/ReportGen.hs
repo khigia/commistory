@@ -81,11 +81,14 @@ commitsToJson tz repocommits =
     renderCommit ci = render
                     $ setAttribute "timestamp" (renderTime $ ciTimestamp ci)
                     $ setAttribute "author" (show $ ciAuthor ci)
+                    $ setAttribute "la" (show $ fst lines)
+                    $ setAttribute "ld" (show $ snd lines)
                     tplCommit
+      where lines = countCommitLines ci
     renderTime t = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" $ utcToLocalTime tz t
     tpl = newSTMP "[$repocommits$]" :: StringTemplate String
     tplRepo = newSTMP "{\"repo\":\"$repo$\",\"commits\":[$commits$]}" :: StringTemplate String
-    tplCommit = newSTMP "{\"stamp\":\"$timestamp$\",\"author\":$author$}" :: StringTemplate String
+    tplCommit = newSTMP "{\"stamp\":\"$timestamp$\",\"author\":$author$,\"la\":$la$,\"ld\":$ld$}" :: StringTemplate String
 
 report config fstrees commits = do
   -- TODO generate static site frame

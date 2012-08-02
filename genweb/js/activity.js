@@ -27,9 +27,10 @@ draw_histogram = function(info) {
     .domain([monthnum(info.commits[0].stamp), monthnum(info.commits[info.commits.length-1].stamp)])
   ;
   var y = d3.scale.linear()
-    .range([0, h])
+    .range([h, 0])
     .domain([0, d3.max(layers[layers.length-1].map(function(e) {return e.y + e.y0;}))])
   ;
+
 
   var svg = d3.select("#histogram")
     .append("svg:svg")
@@ -37,6 +38,34 @@ draw_histogram = function(info) {
       .attr("height", h + m[0] + m[2])
     .append("svg:g")
       .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
+
+  var xAxisScale = d3.time.scale()
+    .range([0, w - 60])
+    .domain([
+      new Date(info.commits[0].stamp.getFullYear(), info.commits[0].stamp.getMonth()),
+      new Date(info.commits[info.commits.length-1].stamp.getFullYear(), info.commits[info.commits.length-1].stamp.getMonth())
+    ])
+  ;
+  var xAxis = d3.svg.axis()
+                    .scale(xAxisScale)
+                    //.ticks(d3.time.months, 3)
+                    .orient("bottom");
+
+  svg.append("svg:g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + h + ")")
+      .call(xAxis);
+
+  var yAxis = d3.svg.axis()
+                    .scale(y)
+                    //.ticks(8)
+                    //.tickSize(6)
+                    .orient("left");
+
+  svg.append("svg:g")
+      .attr("class", "y axis")
+      .attr("transform", "translate(" + m[1] + ",0)")
+      .call(yAxis);
 
   var svglayers = svg.selectAll("g.layer")
     .data(layers)
@@ -54,9 +83,9 @@ draw_histogram = function(info) {
         .attr("class", "bar")
       .append("svg:rect")
         .attr("x", function(d) { return x(d.x); })
-        .attr("y", function(d) { return h - y(d.y0 + d.y);})
         .attr("width", function(d) { return x(d.x + d.dx) - x(d.x) - dx; })
-        .attr("height", function(d) { return y(d.y); })
+        .attr("y", function(d) { return y(d.y0 + d.y);})
+        .attr("height", function(d) { return y(d.y0) - y(d.y0 + d.y); })
   ;
 }
 
@@ -231,7 +260,7 @@ draw_dow_count = function(info) {
   ;
 };
 
-draw_commit_history = function(info) {
+draw_stacks = function(info) {
   var m = [20, 20, 30, 20],
       w = 680 - m[1] - m[3],
       h = 320 - m[0] - m[2];
@@ -262,10 +291,10 @@ draw_commit_history = function(info) {
         return x(info.commits[d].stamp);
       })
       .y0(function(d) {
-        return y(idx == 0 ? 0 : info.stacks[idx-1][d]);
+        return y(idx == 0 ? 0 : info.stacks[idx-1][d].ci);
       })
       .y1(function(d) {
-        return y(info.stacks[idx][d]);
+        return y(info.stacks[idx][d].ci);
       });
     return area(d3.range(info.commits.length));
   }
@@ -310,8 +339,151 @@ draw_commit_history = function(info) {
      .attr("x", w - 60)
      .attr("y", function(d) {
         var lastCi = info.commits.length - 1;
-        var y0 = i == 0 ? 0 : info.stacks[i-1][lastCi];
-        var y1 = info.stacks[i][lastCi];
+        var y0 = i == 0 ? 0 : info.stacks[i-1][lastCi].ci;
+        var y1 = info.stacks[i][lastCi].ci;
+        return y((y0 + y1) / 2);
+     })
+     .text(d.repo);
+  });
+
+
+
+
+  var svg = d3.select("#linechangedhist").append("svg:svg")
+      .attr("width", w + m[1] + m[3])
+      .attr("height", h + m[0] + m[2])
+    .append("svg:g")
+      .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
+
+  var y = d3.scale.linear()
+    .range([h, 0])
+    .domain([0, info.stacks[info.stacks.length - 1][info.commits.length - 1].linechanged()])
+  ;
+
+  var make_area = function(idx) {
+    var area = d3.svg.area()
+      .interpolate("basis")
+      .x(function(d) {
+        return x(info.commits[d].stamp);
+      })
+      .y0(function(d) {
+        return y(idx == 0 ? 0 : info.stacks[idx-1][d].linechanged());
+      })
+      .y1(function(d) {
+        return y(info.stacks[idx][d].linechanged());
+      });
+    return area(d3.range(info.commits.length));
+  }
+
+  var yAxis = d3.svg.axis()
+                    .scale(y)
+                    //.ticks(8)
+                    //.tickSize(6)
+                    .orient("left");
+
+  var g = svg.selectAll("g")
+    .data(info.data)
+    .enter()
+      .append("svg:g")
+      .attr("class", "repo");
+
+  svg.append("svg:g")
+      .attr("class", "y axis")
+      .attr("transform", "translate(" + m[1] + ",0)")
+      .call(yAxis);
+
+  svg.append("svg:g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + h + ")")
+      .call(xAxis);
+
+  g.each(function(d,i) {
+    var e = d3.select(this);
+    e.append("svg:path", ".line")
+        .attr("class", "area")
+        .attr("d", make_area(i))
+        .style("fill", function(d) {
+          return info.repoColorScale(i);
+        })
+        .style("fill-opacity", 0.5);
+    e.append("svg:text")
+     .attr("x", w - 60)
+     .attr("y", function(d) {
+        var lastCi = info.commits.length - 1;
+        var y0 = i == 0 ? 0 : info.stacks[i-1][lastCi].linechanged();
+        var y1 = info.stacks[i][lastCi].linechanged();
+        return y((y0 + y1) / 2);
+     })
+     .text(d.repo);
+  });
+  
+  
+  
+  
+  
+  var svg = d3.select("#linecounthist").append("svg:svg")
+      .attr("width", w + m[1] + m[3])
+      .attr("height", h + m[0] + m[2])
+    .append("svg:g")
+      .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
+
+  var y = d3.scale.linear()
+    .range([h, 0])
+    .domain([0, info.stacks[info.stacks.length - 1][info.commits.length - 1].linecount()])
+  ;
+
+  var make_area = function(idx) {
+    var area = d3.svg.area()
+      .interpolate("basis")
+      .x(function(d) {
+        return x(info.commits[d].stamp);
+      })
+      .y0(function(d) {
+        return y(idx == 0 ? 0 : info.stacks[idx-1][d].linecount());
+      })
+      .y1(function(d) {
+        return y(info.stacks[idx][d].linecount());
+      });
+    return area(d3.range(info.commits.length));
+  }
+
+  var yAxis = d3.svg.axis()
+                    .scale(y)
+                    //.ticks(8)
+                    //.tickSize(6)
+                    .orient("left");
+
+  var g = svg.selectAll("g")
+    .data(info.data)
+    .enter()
+      .append("svg:g")
+      .attr("class", "repo");
+
+  svg.append("svg:g")
+      .attr("class", "y axis")
+      .attr("transform", "translate(" + m[1] + ",0)")
+      .call(yAxis);
+
+  svg.append("svg:g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + h + ")")
+      .call(xAxis);
+
+  g.each(function(d,i) {
+    var e = d3.select(this);
+    e.append("svg:path", ".line")
+        .attr("class", "area")
+        .attr("d", make_area(i))
+        .style("fill", function(d) {
+          return info.repoColorScale(i);
+        })
+        .style("fill-opacity", 0.5);
+    e.append("svg:text")
+     .attr("x", w - 60)
+     .attr("y", function(d) {
+        var lastCi = info.commits.length - 1;
+        var y0 = i == 0 ? 0 : info.stacks[i-1][lastCi].linecount();
+        var y1 = info.stacks[i][lastCi].linecount();
         return y((y0 + y1) / 2);
      })
      .text(d.repo);
@@ -352,23 +524,52 @@ d3.json("./data/commits.json", function(data) {
       dowcount.add_stamp(c.stamp);
     });
     repo.commits.sort(function(a,b) { return a.stamp - b.stamp; });
-    commits.push.apply(commits, repo.commits.map(function(c) { return {'repoIdx': repoIdx, 'stamp': c.stamp} })); // concat in place
+    commits.push.apply(commits, repo.commits.map(function(c) {
+      return { 'repoIdx': repoIdx
+             , 'stamp': c.stamp
+             , 'la': c.la
+             , 'ld': c.ld
+             };
+    })); // concat in place
   });
   commits.sort(function(a,b) { return a.stamp - b.stamp; });
 
   // Accumulate commit count
+  // TODO created similar y0/y values to be able to plot
+  // both stacked or unstacked version ... even if i our case
+  // we always have: y0 = y - y[-1]
   var stacks = new Array();
+  function StackPoint() {
+    this.ci = 0;
+    this.la = 0;
+    this.ld = 0;
+  }
+  StackPoint.prototype.clone = function() {
+    var c = new StackPoint();
+    c.ci = this.ci;
+    c.la = this.la;
+    c.ld = this.ld;
+    return c;
+  }
+  StackPoint.prototype.linechanged = function() {
+    return this.la + this.ld;
+  }
+  StackPoint.prototype.linecount = function() {
+    return this.la - this.ld;
+  }
   var currentDataPoint = new Array();
   data.forEach(function(repo, repoIdx) {
-    currentDataPoint[repoIdx] = 0;
+    currentDataPoint[repoIdx] = new StackPoint();
     stacks.push(new Array());
   });
   commits.forEach(function(d, ci) {
     d3.range(d.repoIdx, data.length).forEach(function(i) {
-      currentDataPoint[i] += 1;  // incr repo commit count and all following stacks
+      currentDataPoint[i].ci += 1;  // incr repo commit count and all following stacks
+      currentDataPoint[i].la += d.la;  // incr count for all following stacks
+      currentDataPoint[i].ld += d.ld;  // incr count for all following stacks
     });
     data.forEach(function(repo, ri) {
-      stacks[ri].push(currentDataPoint[ri]);
+      stacks[ri].push(currentDataPoint[ri].clone());
     });
   });
   info.data = data;
@@ -388,8 +589,10 @@ d3.json("./data/commits.json", function(data) {
   }
 
   draw_histogram(info);
-  draw_commit_history(info);
+  draw_stacks(info);
   draw_dow_count(info);
 
+  tmp = info;
+  console.log(info);
 });
 
